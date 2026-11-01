@@ -1,0 +1,15 @@
+langchain~=0.3.0
+langchain-core
+langchain-community
+langchain-huggingface
+langgraph
+langsmith
+pdfplumber
+pydantic
+pypdf
+faiss-cpu
+sentence-transformers
+huggingface-hub
+python-dotenv
+pandas
+openpyxl
