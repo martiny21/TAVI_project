@@ -1,6 +1,7 @@
 import json
 import argparse
 import os
+from collections import defaultdict
 import pandas as pd
 from datetime import datetime, timedelta
 from llama_cpp import Llama
@@ -95,9 +96,9 @@ MAPEO = {
 }
 
 def cargar_planilla(ruta):
-    df = pd.read_excel(ruta, sheet_name=0).fillna("")
+    df = pd.read_excel(ruta, sheet_name=0)
+    df = df.astype(object).where(pd.notna(df), "")
     # elimina filas duplicadas del encabezado (peculiaridad real de la planilla)
-    primer_fila = df.columns.tolist()
     df = df.loc[:, ~df.columns.duplicated()]
     df = df[df["Nombre taller"] != "Nombre taller"]
     # renombra a campos canónicos y convertir fecha serial
@@ -111,29 +112,94 @@ payload = json.dumps(talleres, ensure_ascii=False, indent=2)
 print("=== INGESTA - Excel real -> JSON canónico ===")
 print(payload)
 
-# AGENTE VALIDADOR (M3) - detecta errores reales reportados por el cliente
-prompt_validador = """Eres el verificador de la cartelera semanal de talleres del PAIEP (USACH).
+# Los choques son reglas exactas y se calculan fuera del LLM.
+def clave_normalizada(valor):
+    return str(valor).strip().casefold()
+
+
+def detectar_conflictos(talleres):
+    por_sala = defaultdict(list)
+    por_docente = defaultdict(list)
+    for taller in talleres:
+        momento = (
+            clave_normalizada(taller["fecha"]),
+            clave_normalizada(taller["dia"]),
+            clave_normalizada(taller["horario"]),
+        )
+        sala = clave_normalizada(taller["sala"])
+        encargado = clave_normalizada(taller["encargado"])
+        if sala and sala != "virtual":
+            por_sala[(*momento, sala)].append(taller)
+        if encargado:
+            por_docente[(*momento, encargado)].append(taller)
+
+    choques_sala = [
+        {
+            "sala": grupo[0]["sala"],
+            "dia": grupo[0]["dia"],
+            "horario": grupo[0]["horario"],
+            "talleres": [t["nombre"] for t in grupo],
+        }
+        for grupo in por_sala.values()
+        if len(grupo) > 1
+    ]
+    docentes_duplicados = [
+        {
+            "encargado": grupo[0]["encargado"],
+            "dia": grupo[0]["dia"],
+            "horario": grupo[0]["horario"],
+            "talleres": [t["nombre"] for t in grupo],
+        }
+        for grupo in por_docente.values()
+        if len(grupo) > 1
+    ]
+    return choques_sala, docentes_duplicados
+
+
+choques_sala, docentes_duplicados = detectar_conflictos(talleres)
+
+# AGENTE VALIDADOR (M3) - interpreta solamente texto ambiguo
+prompt_validador = """Eres el verificador de la cartelera semanal de talleres del PAIEP de la Universidad de Santiago de Chile.
 
 Talleres (JSON):
 {payload}
 
-Detecta SOLO estos tres problemas, que son los errores reales que ocurren
-en la operación de PAIEP:
-1. suspensiones_mal_registradas: "observaciones" indica que el taller fue
-   suspendido/cancelado, pero "estado" NO es "Suspendido" ni "No Vigente".
-2. choques_de_sala: dos talleres en la misma sala, mismo día y mismo horario.
-3. docente_duplicado: el mismo encargado con dos talleres el mismo día y
-   mismo horario.
+Analiza SOLO "observaciones" para detectar suspensiones mal registradas.
+Marca un taller únicamente cuando "observaciones" contiene explícitamente
+"suspendido", "suspensión", "cancelado", "cancelada" o "no se realiza", y
+"estado" no es exactamente "Suspendido" ni "No Vigente".
+Una observación normal o descriptiva no es una suspensión.
+Si no hay coincidencias, devuelve una lista vacía.
 
-Responde SOLO con este JSON (sin texto adicional):
+Responde EXACTAMENTE con este objeto y ninguna otra clave:
 {{
   "suspensiones_mal_registradas": [{{"taller": "...", "observacion": "...", "estado_actual": "..."}}],
-  "choques_de_sala": [{{"sala": "...", "dia": "...", "horario": "...", "talleres": ["...", "..."]}}],
-  "docente_duplicado": [{{"encargado": "...", "dia": "...", "horario": "...", "talleres": ["...", "..."]}}],
   "resumen": "una frase"
 }}"""
 
-alertas = completar_json(prompt_validador, payload)
+resultado_modelo = completar_json(prompt_validador, payload)
+if not isinstance(resultado_modelo, dict):
+    raise RuntimeError("El validador devolvió un JSON que no es un objeto.")
+suspensiones = resultado_modelo.get("suspensiones_mal_registradas", [])
+if not isinstance(suspensiones, list):
+    raise RuntimeError(
+        "El validador devolvió suspensiones_mal_registradas con formato inválido."
+    )
+for suspension in suspensiones:
+    if not isinstance(suspension, dict) or not suspension.get("taller"):
+        raise RuntimeError(
+            "Cada suspensión debe ser un objeto con el campo 'taller'."
+        )
+alertas = {
+    "suspensiones_mal_registradas": suspensiones,
+    "choques_de_sala": choques_sala,
+    "docente_duplicado": docentes_duplicados,
+    "resumen": (
+        "Se detectaron conflictos de sala o docente."
+        if choques_sala or docentes_duplicados
+        else resultado_modelo.get("resumen", "No se encontraron problemas.")
+    ),
+}
 print("=== AGENTE VALIDADOR (LLM local + llama.cpp) ===")
 print(json.dumps(alertas, ensure_ascii=False, indent=2))
 print()
@@ -158,6 +224,10 @@ print()
 #    El LLM devuelve JSON estructurado; data.js se renderiza en Python
 #    (determinismo total: nada de HTML/JS malformado por texto libre)
 prompt_generador = """Eres el generador de datos para la cartelera web de talleres del PAIEP.
+De la Universidad de Santiago de Chile. Recibes un JSON con los talleres validados y devuelves un JSON con tarjetas para la cartelera web.
+No debes inventar nada: solo debes usar los datos que vienen en el JSON de entrada.
+Si no hay datos para un campo, rellena con una cadena vacía "".
+Si el taller es virtual, rellena el campo "sala" con la cadena "Virtual".
 
 Talleres validados (JSON):
 {payload}

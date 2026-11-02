@@ -1,36 +1,25 @@
 // Generado automáticamente por SAAP - pipeline n8n + LLM local
 const TALLERES = [
   {
-    "titulo": "Taller de Programación Avanzada",
-    "area": "Ingeniería de Software",
-    "encargado": "Juan Pérez",
-    "facultad": "Universidad de la República",
+    "titulo": "¿Cómo equilibrar mi vida académica y personal? - Organización y planificación del tiempo",
+    "area": "AOS",
+    "encargado": "Jorge Riffo",
+    "facultad": "Todas las Facultades",
     "dia": "Miércoles",
-    "fecha": "2023-04-15T14:00:00Z",
-    "horario": "14:00-17:00",
-    "sala": "Aula 101",
-    "descripcion": "Este taller se enfoca en el desarrollo de aplicaciones avanzadas utilizando lenguajes como Python y JavaScript."
+    "fecha": "2026-09-23T11:25:00.000Z",
+    "horario": "11:25 a 12:45",
+    "sala": "Sala N°12 PAIEP",
+    "descripcion": "Orientado a estudiantes que buscan fortalecer la organización de su tiempo en la universidad, entregando estrategias prácticas de planificación y gestión para equilibrar responsabilidades académicas y personales."
   },
   {
-    "titulo": "Taller de Redes de Computadoras",
-    "area": "Ingeniería de Sistemas",
-    "encargado": "María García",
-    "facultad": "Universidad Nacional de Córdoba",
-    "dia": "Viernes",
-    "fecha": "2023-04-17T10:00:00Z",
-    "horario": "10:00-13:00",
-    "sala": "Aula 202",
-    "descripcion": "Este taller se centra en la configuración y administración de redes de computadoras, incluyendo protocolos y servicios de red."
-  },
-  {
-    "titulo": "Taller de Gestión de Proyectos",
-    "area": "Ingeniería de Sistemas",
-    "encargado": "Carlos Sánchez",
-    "facultad": "Universidad de la República",
-    "dia": "Martes",
-    "fecha": "2023-04-19T16:00:00Z",
-    "horario": "16:00-19:00",
-    "sala": "Aula 303",
-    "descripcion": "Este taller se enfoca en la gestión de proyectos, incluyendo planificación, ejecución y control de recursos."
+    "titulo": "Taller de Hacking",
+    "area": "AOS",
+    "encargado": "Jorge Riffo",
+    "facultad": "Todas las Facultades",
+    "dia": "Miércoles",
+    "fecha": "2026-09-23T13:45:00.000Z",
+    "horario": "13:45 a 15:05",
+    "sala": "Sala N°12 PAIEP",
+    "descripcion": "Para hacer un pancito con chela"
   }
 ];
