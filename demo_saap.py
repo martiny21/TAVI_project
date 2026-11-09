@@ -62,6 +62,13 @@ def completar_json(instrucciones, payload):
         max_tokens=4096,
         response_format={"type": "json_object"},
     )
+    uso = respuesta.get("usage", {}) or {}
+    print(
+        "USO DE TOKENS (LLM)\n"
+        f"Entrada: {uso.get('prompt_tokens', 'N/D')} | "
+        f"Salida: {uso.get('completion_tokens', 'N/D')} | "
+        f"Total: {uso.get('total_tokens', 'N/D')}"
+    )
     contenido = respuesta["choices"][0]["message"]["content"]
     try:
         return json.loads(contenido)
