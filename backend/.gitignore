@@ -1,0 +1,22 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Archivos generados por Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos generados por las pruebas
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Archivos temporales
+*.log
+*.tmp
