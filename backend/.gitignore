@@ -20,3 +20,6 @@ htmlcov/
 # Archivos temporales
 *.log
 *.tmp
+
+# Planillas locales y datos institucionales
+data/
